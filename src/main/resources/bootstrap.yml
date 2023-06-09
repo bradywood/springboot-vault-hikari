@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: spring-vault-database-rotate
+  cloud:
+    vault:
+      enabled: true
+      scheme: http
+      uri: http://localhost:8200
+      token: 00000000-0000-0000-0000-000000000000
+      fail-fast: true
+      database:
+        enabled: true
+        role: readonly
+        username-property: spring.datasource.username
+        password-property: spring.datasource.password

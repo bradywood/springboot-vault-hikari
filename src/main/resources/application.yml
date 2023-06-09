@@ -1,0 +1,33 @@
+spring:
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  datasource:
+    url: jdbc:postgresql://localhost:5432/testuser
+    username: testuser
+    password: testpassword
+    hikari:
+      minimumPoolSize: 10
+      maximumPoolSize: 30
+      keepaliveTime: 60000
+      maxLifetime: 21600000
+  application:
+    name: spring-vault-database-rotate
+  cloud:
+    bootstrap:
+      enabled=true:
+    vault:
+      enabled: true
+      scheme: http
+      host: localhost
+      port: 8200
+      uri: http://localhost:8200
+      authentication: token
+      token: 00000000-0000-0000-0000-000000000000
+      fail-fast: true
+      database:
+        enabled: true
+        role: readonly
+        username-property: spring.datasource.username
+        password-property: spring.datasource.password
