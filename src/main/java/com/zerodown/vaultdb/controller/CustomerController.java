@@ -1,9 +1,12 @@
 package com.zerodown.vaultdb.controller;
 
 import com.zerodown.vaultdb.entity.Customer;
+import com.zerodown.vaultdb.repository.CustomerRepositoryWorker;
 import com.zerodown.vaultdb.repository.UserRepository;
+import com.zerodown.vaultdb.stats.CompletedCounter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -14,7 +17,12 @@ import javax.sql.DataSource;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Controller
 @Slf4j
@@ -26,6 +34,12 @@ public class CustomerController {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    ApplicationContext applicationContext;
+
+    @Autowired
+    CompletedCounter completedCounter;
 
     @GetMapping("/customers")
     public ResponseEntity<List<Customer>> getCustomers() {
@@ -53,6 +67,30 @@ public class CustomerController {
             }
         }
         //List<Customer> customerList = userRepository.findAll();
+
+        return ResponseEntity.ok()
+                //.contentType(MediaType.APPLICATION_STREAM_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("done");
+    }
+
+    @GetMapping("/testCustomersCustom")
+    public ResponseEntity<String> getTestCustomersCustom() {
+        ExecutorService executor = Executors.newFixedThreadPool(1000);
+        Set<Callable<String>> callables = new HashSet<Callable<String>>();
+
+        for(int ii=0;ii<2000;ii++) {
+            int finalIi = ii;
+            callables.add(new CustomerRepositoryWorker(applicationContext, completedCounter));
+        }
+        try {
+            executor.invokeAll(callables);
+        } catch (InterruptedException e) {
+            log.error("Interrupted Exception {}", e.getCause());
+            //throw new RuntimeException(e);
+        }
+
+        log.info("Success {}, Failed {}", completedCounter.atomicSuccessInteger.get(), completedCounter.atomicFailedInteger.get());
 
         return ResponseEntity.ok()
                 //.contentType(MediaType.APPLICATION_STREAM_JSON)

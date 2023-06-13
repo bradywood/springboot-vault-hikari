@@ -24,8 +24,7 @@ public class VaultLeaseConfig {
     private String databaseRole;
 
     private final ApplicationContext applicationContext;
-    //private final SecretLeaseContainer leaseContainer;
-    // inject the actual template
+
     @Autowired
     private VaultOperations operations;
 

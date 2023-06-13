@@ -1,4 +1,21 @@
+management:
+  endpoint:
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: metrics,info,health,prometheus
+
 spring:
+  flyway:
+    plugins:
+      vault:
+        url: http://localhost:8200/v1
+        token: 00000000-0000-0000-0000-000000000000
+        secrets:
   jpa:
     properties:
       hibernate:
@@ -14,6 +31,9 @@ spring:
       maxLifetime: 21600000
   application:
     name: spring-vault-database-rotate
+    db:
+      flyway:
+        role: flywayrole
   cloud:
     bootstrap:
       enabled=true:
