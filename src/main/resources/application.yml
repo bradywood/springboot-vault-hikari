@@ -16,6 +16,7 @@ spring:
         url: http://localhost:8200/v1
         token: 00000000-0000-0000-0000-000000000000
         secrets:
+      init-sqls: ""
   jpa:
     properties:
       hibernate:

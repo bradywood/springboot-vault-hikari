@@ -9,6 +9,6 @@ while ! docker exec postgres pg_isready -h localhost -U testuser    ; do
     sleep 0.1
 done
 
-#echo "Initialize table"
-#export PGPASSWORD=testpassword
-#psql -h localhost -U testuser -f db_init.sql
+echo "Initialize table"
+export PGPASSWORD=testpassword
+psql -h localhost -U testuser -f db_init.sql

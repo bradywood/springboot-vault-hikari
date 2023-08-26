@@ -19,12 +19,14 @@ public class CustomerRepositoryWorker implements Callable<String> {
     private final CompletedCounter completedCounter;
 
     private static final int RETRY_MAX = 5;
+
     private AtomicInteger counter = new AtomicInteger(RETRY_MAX);
 
-    public CustomerRepositoryWorker(ApplicationContext applicationContext, CompletedCounter completedCounter) {
+    public CustomerRepositoryWorker(ApplicationContext applicationContext, CompletedCounter completedCounter) { //}, Flyway flyway) {
         //this.dataSource = dataSource;
         this.applicationContext = applicationContext;
         this.completedCounter = completedCounter;
+        //this.flyway = flyway;
     }
 
     @Override
@@ -37,14 +39,24 @@ public class CustomerRepositoryWorker implements Callable<String> {
                     log.info("Name {} Address {} RetryCounter {}", rs.getString("name"), rs.getString("address"), RETRY_MAX - counter.get());
                 }
             }
-
-            //hold on to for a second
-            sleeper(1);
             completedCounter.atomicSuccessInteger.incrementAndGet();
-            
 
-        } catch (
-                SQLException sqlException) {
+            //hold on to for a second, just to slow the workers down, artificially.
+            sleeper(1);
+
+            /*try {
+                if (flyway != null) {
+                    MigrationInfoService migrationInfoService = flyway.info();
+                    if (null != migrationInfoService) {
+                        log.info("Flyway Version {}", migrationInfoService.getInfoResult().flywayVersion);
+                    }
+                }
+            } catch (FlywayException flywayException) {
+                //log.error("Flyway Exception {}", flywayException);
+                log.error("Flyway Exception", flywayException);
+            }*/
+
+        } catch (SQLException sqlException) {
             if (counter.decrementAndGet() > 0) {
                 sleeper(5);
                 return call();

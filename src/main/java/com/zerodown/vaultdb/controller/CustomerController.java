@@ -5,6 +5,7 @@ import com.zerodown.vaultdb.repository.CustomerRepositoryWorker;
 import com.zerodown.vaultdb.repository.UserRepository;
 import com.zerodown.vaultdb.stats.CompletedCounter;
 import lombok.extern.slf4j.Slf4j;
+import org.flywaydb.core.Flyway;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.MediaType;
@@ -40,6 +41,9 @@ public class CustomerController {
 
     @Autowired
     CompletedCounter completedCounter;
+
+    @Autowired
+    Flyway flyway;
 
     @GetMapping("/customers")
     public ResponseEntity<List<Customer>> getCustomers() {
