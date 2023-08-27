@@ -1,5 +1,6 @@
 package com.zerodown.vaultdb.controller;
 
+import com.zaxxer.hikari.HikariDataSource;
 import com.zerodown.vaultdb.entity.Customer;
 import com.zerodown.vaultdb.repository.CustomerRepositoryWorker;
 import com.zerodown.vaultdb.repository.UserRepository;
@@ -104,18 +105,25 @@ public class CustomerController {
 
     @GetMapping("/dbuser")
     public ResponseEntity<String> getDbUser() throws SQLException {
-        try (Statement statement = userDataSource.getConnection().createStatement()){
-            ResultSet rs = statement.executeQuery("SELECT session_user, current_user;");
-            if (rs.next()) {
-                return ResponseEntity.ok()
-                        //.contentType(MediaType.APPLICATION_STREAM_JSON)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body(rs.getString(1) + "_" + rs.getString(2));
+        HikariDataSource hikariDataSource = (HikariDataSource) applicationContext.getBean("dataSource");
+
+        if (hikariDataSource.getConnection() != null && hikariDataSource.getConnection().isValid(2000)) {
+
+
+            try (Statement statement = hikariDataSource.getConnection().createStatement()) {
+                ResultSet rs = statement.executeQuery("SELECT session_user, current_user;");
+                if (rs.next()) {
+                    return ResponseEntity.ok()
+                            //.contentType(MediaType.APPLICATION_STREAM_JSON)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .body(rs.getString(1) + "_" + rs.getString(2));
+                }
             }
-            return ResponseEntity.ok()
-                    //.contentType(MediaType.APPLICATION_STREAM_JSON)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body("NotFound");
         }
+        return ResponseEntity.ok()
+                //.contentType(MediaType.APPLICATION_STREAM_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("NotFound");
+
     }
 }

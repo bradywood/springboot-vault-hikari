@@ -7,9 +7,12 @@ spring:
       scheme: http
       uri: http://localhost:8200
       token: 00000000-0000-0000-0000-000000000000
-      fail-fast: true
+      config:
+        lifecycle:
+          enabled: true
+          expiry-threshold: 2m
       database:
         enabled: true
-        role: readonly
+        role: flywayrole
         username-property: spring.datasource.username
         password-property: spring.datasource.password

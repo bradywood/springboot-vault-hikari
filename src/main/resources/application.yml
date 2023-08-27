@@ -16,7 +16,7 @@ spring:
         url: http://localhost:8200/v1
         token: 00000000-0000-0000-0000-000000000000
         secrets:
-      init-sqls: ""
+      init-sqls: "SET ROLE 'flywayrole'"
   jpa:
     properties:
       hibernate:
@@ -49,6 +49,6 @@ spring:
       fail-fast: true
       database:
         enabled: true
-        role: readonly
+        role: flywayrole
         username-property: spring.datasource.username
         password-property: spring.datasource.password
