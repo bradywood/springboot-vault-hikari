@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -105,12 +107,15 @@ public class CustomerController {
 
     @GetMapping("/dbuser")
     public ResponseEntity<String> getDbUser() throws SQLException {
+        boolean validConnection = false;
         HikariDataSource hikariDataSource = (HikariDataSource) applicationContext.getBean("dataSource");
-
-        if (hikariDataSource.getConnection() != null && hikariDataSource.getConnection().isValid(2000)) {
-
-
-            try (Statement statement = hikariDataSource.getConnection().createStatement()) {
+        String username = hikariDataSource.getUsername();
+        String password = hikariDataSource.getPassword();
+        try (Connection testConnection = DriverManager.getConnection(hikariDataSource.getJdbcUrl(), username , password)) {
+            //try(Connection testConnection = preCheckDataSource.getConnection()) {
+            log.info("==> CREDS_CHECK: before CREDS event: username: {}, password: {}", username, password);
+            validConnection =  testConnection.isValid(1000);
+            try (Statement statement = testConnection.createStatement()) {
                 ResultSet rs = statement.executeQuery("SELECT session_user, current_user;");
                 if (rs.next()) {
                     return ResponseEntity.ok()
@@ -119,6 +124,9 @@ public class CustomerController {
                             .body(rs.getString(1) + "_" + rs.getString(2));
                 }
             }
+            log.info("==> CREDS_CHECK: after CREDS event: username: {}, password: {}, validConnection: {}", username, password, validConnection);
+        } catch (SQLException sqlException) {
+            log.info("==> CREDS_CHECK: EXCEPTION username {}, password: {}", username, password, sqlException);
         }
         return ResponseEntity.ok()
                 //.contentType(MediaType.APPLICATION_STREAM_JSON)

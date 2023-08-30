@@ -15,6 +15,6 @@ vault write database/config/postgres \
 echo '### Create dynamic db role'
 vault write database/roles/flywayrole db_name=postgres \
     creation_statements="CREATE ROLE \"{{name}}\" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}'; GRANT flywayrole TO \"{{name}}\";" \
-    revocation_statements="DROP ROLE \"{{name}}\";" default_ttl="1m" max_ttl="1m"
+    revocation_statements="DROP ROLE \"{{name}}\";" default_ttl="2m" max_ttl="2m"
 
 vault read database/roles/flywayrole

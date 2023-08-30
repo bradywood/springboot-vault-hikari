@@ -20,7 +20,9 @@ import org.springframework.vault.core.lease.event.SecretLeaseEvent;
 import org.springframework.vault.core.lease.event.SecretLeaseExpiredEvent;
 import org.springframework.vault.support.LeaseStrategy;
 
-import java.util.Map;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
@@ -35,9 +37,14 @@ public class VaultLeaseConfig {
     @Autowired
     private VaultOperations operations;
 
-
     SecretLeaseContainer leaseContainer;
 
+    //private DataSource preCheckerDataSource;
+
+    /*@Autowired
+    private void setPreCheckerDataSource(@Qualifier("dataSourcePreChecker")DataSource preCheckerDataSource) {
+        this.preCheckerDataSource = preCheckerDataSource;
+    }*/
 
     @Autowired
     private void initSecretLeaseContainer(SecretLeaseContainer leaseContainer) {
@@ -85,22 +92,22 @@ public class VaultLeaseConfig {
                             && leaseEvent.getSource().getPath().equals(vaultCredsPath) && !requestedLeaseIds.containsKey(leaseEvent.getLease().getLeaseId())) {
                         leaseContainer.rotate(RequestedSecret.rotating(leaseEvent.getSource().getPath()));
                         requestedLeaseIds.put(leaseEvent.getLease().getLeaseId(), leaseEvent);
-                        log.info("==>Forced Early Rotation, AfterSecretLeaseRenewed event: {}, leaseId: {}\", leaseEvent, leaseEvent.getLease().getLeaseId());");
+                        log.info("==>Forced Early Rotation, AfterSecretLeaseRenewed event: {}, leaseId: {}\"", leaseEvent, leaseEvent.getLease().getLeaseId());
                     } else if (leaseEvent instanceof SecretLeaseCreatedEvent && leaseEvent.getSource().getMode() == RequestedSecret.Mode.ROTATE) {
                         SecretLeaseCreatedEvent secretLeaseCreatedEvent = (SecretLeaseCreatedEvent) leaseEvent;
                         String username = (String) secretLeaseCreatedEvent.getSecrets().get("username");
                         String password = (String) secretLeaseCreatedEvent.getSecrets().get("password");
+                        if (credentialsValid(username, password)) {
+                            log.info("==> spring.datasource.username: {}", username);
 
-                        log.info("==> Update System properties username & password");
-                        System.setProperty("spring.datasource.username", username);
-                        System.setProperty("spring.datasource.password", password);
+                            updateDataSource(username, password);
+                            log.info("==> DONE updateDataSource");
+                        } else {
+                            leaseContainer.rotate(RequestedSecret.rotating(leaseEvent.getSource().getPath()));
+                        }
 
-                        log.info("==> spring.datasource.username: {}", username);
-
-                        updateDataSource(username, password);
-                        log.info("==> DONE updateDataSource");
                         //requestedLeaseIds.put(secretLeaseCreatedEvent.getLease().getLeaseId(), leaseEvent);
-                    } else if (System.currentTimeMillis() > (leaseEvent.getTimestamp() + leaseEvent.getLease().getLeaseDuration().toMillis())) {
+                    /*} else if (System.currentTimeMillis() > (leaseEvent.getTimestamp() + leaseEvent.getLease().getLeaseDuration().toMillis())) {
                         log.info("Current TimeMills {}, leaseEventTimestamp: {}, leaseEventDurationMillis: {}, system - (event-duration) {}",
                                 System.currentTimeMillis(),
                                 leaseEvent.getTimestamp(),
@@ -119,6 +126,7 @@ public class VaultLeaseConfig {
                                     System.currentTimeMillis() - (secretLeaseEvent.getValue().getTimestamp() + secretLeaseEvent.getValue().getLease().getLeaseDuration().toMillis()));
                             requestedLeaseIds.remove(secretLeaseEvent.getKey());
                         }
+                    }*/
                     }
                     log.info("==> DONE HANDLE event: event: {}, leaseId: {}", leaseEvent, leaseEvent.getLease().getLeaseId());
                 }
@@ -129,8 +137,63 @@ public class VaultLeaseConfig {
         System.out.println("Whatsup.");
     }
 
+    private synchronized boolean credentialsValid(String username, String password) {
+        HikariDataSource hikariDataSource = getHikariDataSource();
+
+
+
+
+
+        /*DataSourceBuilder preCheckDataSourceBuilder = DataSourceBuilder.create();
+        preCheckDataSourceBuilder.driverClassName(hikariDataSource.getDriverClassName());
+        preCheckDataSourceBuilder.url(hikariDataSource.getJdbcUrl());
+        preCheckDataSourceBuilder.username(username);
+        preCheckDataSourceBuilder.password(password);
+
+
+        DataSource preCheckDataSource = preCheckDataSourceBuilder.build();
+        preCheckDataSource.setConnectionTimeout(34000);
+        preCheckDataSource.setIdleTimeout(28740000);
+        preCheckDataSource.setMaxLifetime(28740000);
+*/
+        boolean validConnection = false;
+        //DataSource preCheckDataSource = DataSourceBuilder.create().url(hikariDataSource.getJdbcUrl()).username(hikariDataSource.getUsername()).password(hikariDataSource.getPassword()).build();
+        try (Connection testConnection = DriverManager.getConnection(hikariDataSource.getJdbcUrl(), username, password)) {
+        //try(Connection testConnection = preCheckDataSource.getConnection()) {
+            log.info("==> CREDS_CHECK: before CREDS event: username: {}, password: {}", username, password);
+            validConnection =  testConnection.isValid(1000);
+            log.info("==> CREDS_CHECK: after CREDS event: username: {}, password: {}, validConnection: {}", username, password, validConnection);
+        } catch (SQLException sqlException) {
+            log.info("==> CREDS_CHECK: EXCEPTION username {}, password: {}", username, password, sqlException);
+        }
+        return validConnection;
+    }
+
     private synchronized void updateDataSource(String username, String password) {
-        HikariDataSource hikariDataSource = (HikariDataSource) applicationContext.getBean("dataSource");
+        HikariDataSource hikariDataSource = getHikariDataSource();
+
+        /*boolean validConnection = false;
+        DataSource preCheckDataSource = DataSourceBuilder.create().url(hikariDataSource.getJdbcUrl()).username(hikariDataSource.getUsername()).password(hikariDataSource.getPassword()).build();
+        try(Connection testConnection = preCheckDataSource.getConnection()) {
+            log.info("==> CREDS_CHECK: before CREDS event: username: {}, password: {}", username, password);
+            validConnection =  testConnection.isValid(1000);
+            log.info("==> CREDS_CHECK: after CREDS event: username: {}, password: {}, validConnection: {}", username, password, validConnection);
+        } catch (SQLException sqlException) {
+            log.info("==> CREDS_CHECK: EXCEPTION username {}, password: {}", username, password, sqlException);
+        }
+        finally {
+            preCheckDataSource = null;
+        }
+
+        if(!validConnection) {
+
+            return;
+        }*/
+
+        log.info("==> Update System properties username & password");
+        System.setProperty("spring.datasource.username", username);
+        System.setProperty("spring.datasource.password", password);
+
 
         log.info("==> Update database credentials");
         HikariConfigMXBean hikariConfigMXBean = hikariDataSource.getHikariConfigMXBean();
@@ -139,12 +202,17 @@ public class VaultLeaseConfig {
         hikariConfigMXBean.setPassword(password);
 
         //we dont need to evict database connections, this can happen automatically on failure?
-        log.info("==> Do not Soft evict database connections.");
+
         HikariPoolMXBean hikariPoolMXBean = hikariDataSource.getHikariPoolMXBean();
         if (hikariPoolMXBean != null) {
+            log.info("==> Soft evict database connections.");
             hikariPoolMXBean.softEvictConnections();
         }
 
+    }
+
+    private HikariDataSource getHikariDataSource() {
+        return (HikariDataSource) applicationContext.getBean("dataSource");
     }
 
 }
